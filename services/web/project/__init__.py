@@ -1,4 +1,6 @@
 import os
+import  json
+import psycopg2
 
 from werkzeug.utils import secure_filename
 from flask import (
@@ -13,45 +15,59 @@ from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 app.config.from_object("project.config.Config")
-db = SQLAlchemy(app)
-
-
-class User(db.Model):
-    __tablename__ = "users"
-
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(128), unique=True, nullable=False)
-    active = db.Column(db.Boolean(), default=True, nullable=False)
-
-    def __init__(self, email):
-        self.email = email
 
 
 @app.route("/")
-def hello_world():
-    return jsonify(hello="world")
+def index():
+    return "Hello"
 
 
-@app.route("/static/<path:filename>")
-def staticfiles(filename):
-    return send_from_directory(app.config["STATIC_FOLDER"], filename)
+@app.route("/hard_query")
+def hard_query():
+    q = """select t.category, t.city from 
+        (select c3."name" as category, c2.city, sum(r.return_date - r.rental_date) as rent_time, rank() over (partition by c2.city order by sum(r.return_date - r.rental_date) desc) as rnk from rental r 
+        join customer c on c.customer_id = r.customer_id 
+        join address a on a.address_id = c.customer_id 
+        join city c2 on c2.city_id = a.city_id 
+        join inventory i on i.inventory_id = r.inventory_id 
+        join film_category fc on fc.film_id = i.film_id 
+        join category c3 on c3.category_id = fc.category_id 
+        where r.return_date is not null and r.rental_date is not NULL
+        group  by c2.city, category) t
+    where t.rnk = 1 and (lower(t.city) like 'a%' or t.city like '%-%');"""
+    
+    ret = "error"
+
+    conn = psycopg2.connect(database="pagila", user="hello_flask", password="hello_flask", host="localhost", port=5432)
+    try:
+        with conn.cursor() as cur:
+            cur.execute(q)
+            all = cur.fetchall()
+            ret = dict.fromkeys(range(len(all)), all)
+    finally:
+        conn.close()
+
+    return ret
 
 
-@app.route("/media/<path:filename>")
-def mediafiles(filename):
-    return send_from_directory(app.config["MEDIA_FOLDER"], filename)
-
-
-@app.route("/upload", methods=["GET", "POST"])
-def upload_file():
+@app.route("/add_film", methods=["POST"])
+def add_film():
     if request.method == "POST":
-        file = request.files["file"]
-        filename = secure_filename(file.filename)
-        file.save(os.path.join(app.config["MEDIA_FOLDER"], filename))
-    return """
-    <!doctype html>
-    <title>upload new File</title>
-    <form action="" method=post enctype=multipart/form-data>
-      <p><input type=file name=file><input type=submit value=Upload>
-    </form>
-    """
+        if request.form:
+            data = json.loads(list(request.form)[0])
+
+            conn = psycopg2.connect(database="pagila", user="hello_flask", password="hello_flask", host="localhost", port=5432)
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(f"INSERT INTO film(title, description, release_year, rating, language_id) VALUES('{data['title']}', '{data['description']}', {data['release_year']}, '{data['rating']}', 1);")
+            finally:
+                conn.close()
+
+
+        return jsonify(status="added")
+    return jsonify(status="fail")
+
+@app.route("/cache_test")
+def cache_test():
+    pass
+
