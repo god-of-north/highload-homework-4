@@ -2,7 +2,7 @@ import os
 from subprocess import Popen
 
 
-s = Popen(['python3', os.path.join(os.environ.get('$APP_HOME'), 'project', 'cache.py')])
+s = Popen(['python3', os.path.join(os.environ.get('$APP_HOME', '/home/app/web/'), 'project', 'cache.py')])
                       
 #w = Popen(['gunicorn', '--bind', '0.0.0.0:5000', 'manage:app'])
 #w = Popen(['gunicorn', '--bind', '0.0.0.0:5000', 'manage:app', '-k', 'gevent', '--worker-connections', '1000'])

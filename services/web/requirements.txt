@@ -2,3 +2,6 @@ Flask==1.1.2
 Flask-SQLAlchemy==2.5.1
 gunicorn==20.1.0
 psycopg2-binary==2.8.6
+redis==3.5.3
+python-redis-lock==3.7.0
+psycopg2-binary
