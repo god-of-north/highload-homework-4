@@ -16,16 +16,18 @@ def request2key(request: str):
     return 'q:'+hashlib.sha1(str.encode('utf-8')).hexdigest()
 
 def load_from_db(request: str):
-    print('recalc')
+    print('recalc', flush=True)
     ret = {}
-    conn = psycopg2.connect(database="pagila", user="hello_flask", password="hello_flask", host="db", port=5432)
+    conn = None
     try:
+        conn = psycopg2.connect(database="pagila", user="hello_flask", password="hello_flask", host="db", port=5432)
         with conn.cursor() as cur:
             cur.execute(request)
             all = cur.fetchall()
             ret = dict.fromkeys(range(len(all)), all)
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
     return ret
 
@@ -33,7 +35,7 @@ def recalc(request: str, ttl: int, conn: redis.Redis):
     data_key = request2key(request)
     lock = redis_lock.Lock(conn, data_key)
     if lock.acquire(blocking=False):
-        print('from db')
+        print('from db', flush=True)
         try:
             t = datetime.now()
             data = load_from_db(request)
@@ -45,30 +47,61 @@ def recalc(request: str, ttl: int, conn: redis.Redis):
             lock.release()
             return data
         except Exception as e:
-            print(e)
+            print(e, flush=True)
             lock.release()
     return None
 
+
 def get_data(request: str, ttl: int, conn: redis.Redis):
+    beta = 1.0
     data_key = request2key(request)
     data = conn.hget(data_key, 'data')
     if data:
-        print('from cache |', conn.ttl(data_key), '|', float(conn.hget(data_key, 'ct')))
+        print('from cache |', conn.ttl(data_key), '|', float(conn.hget(data_key, 'ct')), flush=True)
+        
+        computeTime = float(conn.hget(data_key, 'ct'))
+        ttl = conn.ttl(data_key)
+        
+        if (beta - log(random()) * (computeTime) > ttl):
+            r = threading.Thread(name='recalc', target=lambda: recalc(request, ttl, conn))
+            r.start()
         return json.loads(data)
     else:
-        r = recalc(request, ttl, conn)
-        if r:
-            return r
+        data = recalc(request, ttl, conn)
+        if data:
+            return data
         else:
-            print('wait lock')
+            print('wait lock', flush=True)
             for _ in range(20):
                 sleep(0.5)
                 data = conn.hget(data_key, 'data')
                 if data:
                     return json.loads(data)
             #timeout
-            print('lock timeout')
+            print('lock timeout', flush=True)
             return get_data(request, ttl, conn)
+
+
+def get_data_x(request: str, ttl: int, conn: redis.Redis):
+    data_key = request2key(request)
+    data = conn.hget(data_key, 'data')
+    if data:
+        print('from cache |', conn.ttl(data_key), '|', conn.hget(data_key, 'ct'), flush=True)
+        return json.loads(data)
+    else:
+        r = recalc(request, ttl, conn)
+        if r:
+            return r
+        else:
+            print('wait lock', flush=True)
+            for _ in range(20):
+                sleep(0.5)
+                data = conn.hget(data_key, 'data')
+                if data:
+                    return json.loads(data)
+            #timeout
+            print('lock timeout', flush=True)
+            return get_data_x(request, ttl, conn)
 
 
 class GracefulKiller:
@@ -99,7 +132,7 @@ def cache_updater(expire: int):
             computeTime = float(ct)
             ttl = conn.ttl(key)
             p = beta - log(random()) * computeTime
-            print(key, '|', p, '>', ttl, ':', p>ttl)
+            print(key, '|', p, '>', ttl, ':', p>ttl, flush=True)
             if p > ttl:
                 r = threading.Thread(name='recalc', target=lambda: recalc(q.decode("utf-8", "ignore"), expire, conn))
                 r.start()

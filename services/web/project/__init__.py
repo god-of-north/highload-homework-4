@@ -1,9 +1,10 @@
 import os
 import  json
+from time import sleep
 import psycopg2
 import redis
 from datetime import datetime
-from .cache import get_data, request2key, load_from_db
+from .cache import get_data, request2key, load_from_db, get_data_x
 
 from werkzeug.utils import secure_filename
 from flask import (
@@ -12,7 +13,8 @@ from flask import (
     send_from_directory,
     request,
     redirect,
-    url_for
+    url_for,
+    abort,
 )
 from flask_sqlalchemy import SQLAlchemy
 
@@ -77,6 +79,16 @@ def add_film():
 def cache_test():
     return get_data(q, 30, redis_conn)
 
+@app.route("/cache_test_retry")
+def cache_test_retry():
+    for i in range(10):
+        try:
+            return get_data(q, 30, redis_conn)
+        except:
+            pass
+        sleep(0.5)
+    abort(500)
+
 @app.route("/dummy_cache")
 def dummy_cache():
     data_key = 'd:'+request2key(q)
@@ -89,3 +101,14 @@ def dummy_cache():
         redis_conn.expire(data_key, 30)
         return data
 
+@app.route("/dummy_cache_nodata")
+def dummy_cache_nodata():
+    data_key = 'd:'+request2key(q)
+    data = redis_conn.get(data_key)
+    if data:
+        return "ok"
+    else:
+        data = load_from_db(q)
+        redis_conn.set(data_key, json.dumps(data))
+        redis_conn.expire(data_key, 30)
+        return "ok"

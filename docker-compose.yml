@@ -5,11 +5,8 @@ services:
     build:
       context: ./services/web
       dockerfile: Dockerfile
-    #command: gunicorn --bind 0.0.0.0:5000 manage:app
-    #command: gunicorn --bind 0.0.0.0:5000 manage:app -k gevent --worker-connections 1000
-    #command: gunicorn --bind 0.0.0.0:5000 manage:app -w 1 --threads 12
-    #command: gunicorn --bind 0.0.0.0:5000 manage:app -w 4
-    command: python3 /home/app/web/run_server.py
+    command: gunicorn --bind 0.0.0.0:5000 manage:app -w 10
+    #command: python3 /home/app/web/run_server.py
     volumes:
       - ./data/nginx/static:/home/app/web/project/static
       - ./data/nginx/media:/home/app/web/project/media

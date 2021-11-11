@@ -1,0 +1,6 @@
+http://localhost:1337/
+http://localhost:1337/dummy_cache
+http://localhost:1337/cache_test
+http://localhost:1337/hard_query
+http://localhost:1337/cache_test_retry
+http://localhost:1337/dummy_cache_nodata
