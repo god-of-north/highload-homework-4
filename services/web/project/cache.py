@@ -62,7 +62,7 @@ def get_data(request: str, ttl: int, conn: redis.Redis):
         computeTime = float(conn.hget(data_key, 'ct'))
         ttl = conn.ttl(data_key)
         
-        if (beta - log(random()) * (computeTime) > ttl):
+        if (beta * (- log(random())) * computeTime > ttl):
             r = threading.Thread(name='recalc', target=lambda: recalc(request, ttl, conn))
             r.start()
         return json.loads(data)
@@ -131,7 +131,7 @@ def cache_updater(expire: int):
                 continue
             computeTime = float(ct)
             ttl = conn.ttl(key)
-            p = beta - log(random()) * computeTime
+            p = beta * (- log(random())) * computeTime
             print(key, '|', p, '>', ttl, ':', p>ttl, flush=True)
             if p > ttl:
                 r = threading.Thread(name='recalc', target=lambda: recalc(q.decode("utf-8", "ignore"), expire, conn))
