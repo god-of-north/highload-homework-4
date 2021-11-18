@@ -133,3 +133,4 @@ data/postgres/*
 pagila/*
 redis_test.py
 siege.log
+siege.exe.stackdump
