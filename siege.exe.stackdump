@@ -1,0 +1,6 @@
+Exception: STATUS_ACCESS_VIOLATION at eip=6105F50C
+eax=00000000 ebx=FF03A8EC ecx=5079A4D9 edx=00000000 esi=612AE778 edi=00000029
+ebp=00000000 esp=FF03A860 program=C:\siege-windows\siege.exe, pid 25488, thread unknown (0x4680)
+cs=0023 ds=002B es=002B fs=0053 gs=002B ss=002B
+Stack trace:
+Frame     Function  Args

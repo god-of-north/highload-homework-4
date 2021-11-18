@@ -4,7 +4,7 @@
 
 ```
 git clone https://github.com/god-of-north/highload-homework-4.git
-cd god-of-north/highload-homework-4 
+cd highload-homework-4 
 docker-compose build
 install_db.bat
 ```
